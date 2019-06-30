@@ -18,6 +18,7 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
     
     private var lastScan = "None"
     private var lastDest = ""
+    private var bookURL: String? = nil
     private var playButtonIs: PlayButtonIs = .pause
     
 	override func viewDidLoad() {
@@ -362,11 +363,13 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
         switch playButtonIs {
         case .check:
             lastDest = defaults.object(forKey: "pcode") as? String ?? ""
+            bookURL = defaults.object(forKey: "book") as? String
             playButton.setTitle("⏸", for: .normal)
             playButtonIs = .pause
             destinationLabel.text = name
         case .pause:
             lastDest = ""
+            bookURL = nil
             if name != nil {
                 playButton.setTitle("✅", for: .normal)
                 playButtonIs = .check
@@ -672,7 +675,9 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
                     var url = ""
                     let tokens = stringValue.components(separatedBy: "?")
                     print("Tokens: \(tokens)")
-                    if tokens.count != 2 {
+                    if tokens.count == 1 && stringValue.count == 13 && bookURL != nil {
+                        url = bookURL! + "?b=" + stringValue
+                    } else if tokens.count != 2 {
                         errorLabel.text = "Invalid barcode scanned"
                     } else {
                         print("Token[1]: \(tokens[1])")
@@ -695,6 +700,7 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
                     if url != "" {
                         let session = URLSession.shared
                         if let request = URL(string: url) {
+                            print("URL: \(url)")
                             let task = session.dataTask(with: request, completionHandler: { data, response, error in
                                 print("Data: \(String(describing: data))")
                                 print("Response: \(String(describing: response))")
@@ -702,30 +708,41 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
                                 
                                 if error != nil {
                                     print("Query \(url) failed: \(String(describing: error))")
-                                    self.errorLabel.text = "Query failed: \(error!.localizedDescription))"
+                                    DispatchQueue.main.async {
+                                        self.errorLabel.text = "Query failed: \(error!.localizedDescription))"
+                                    }
                                     return
                                 }
                                 
                                 if data == nil {
                                     print("Query \(url) failed, empty data")
-                                    self.errorLabel.text = "Query failed: No data"
+                                    DispatchQueue.main.async {
+                                        self.errorLabel.text = "Query failed: No data"
+                                    }
                                     return
                                 }
                                 
                                 guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode) else {
                                     print("Server error!")
-                                    self.errorLabel.text = "Query failed: Non-200 response status"
+                                    DispatchQueue.main.async {
+                                        self.errorLabel.text = "Query failed: Non-200 response status"
+                                    }
                                     return
                                 }
                                 
                                 guard let mime = response.mimeType, mime == "application/json" else {
                                     print("Wrong MIME type!")
+                                    DispatchQueue.main.async {
+                                        self.errorLabel.text = "Expecting json"
+                                    }
                                     return
                                 }
                                 
                                 do {
                                     let jsonData = try JSONSerialization.jsonObject(with: data!, options: [])
+                                    print("jsonData: \(String(describing: jsonData))")
                                     if let json = jsonData as? [String: Any] {
+                                        print("json: \(String(describing: json))")
                                         if let errorText = json["error"] as? String {
                                             DispatchQueue.main.async {
                                                 self.titleLabel.text = ""
@@ -756,6 +773,9 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
                                                 if (json["default"] as? Bool) != nil {
                                                     defaults.set(pcode, forKey: "pcode")
                                                     defaults.set(name, forKey: "name")
+                                                    if let book = json["book"] as? String {
+                                                        defaults.set(book, forKey: "book")
+                                                    }
                                                     DispatchQueue.main.async {
                                                         self.playButton.setTitle("⏸", for: .normal)
                                                     }
