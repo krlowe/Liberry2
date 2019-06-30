@@ -774,6 +774,7 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
                                                     defaults.set(pcode, forKey: "pcode")
                                                     defaults.set(name, forKey: "name")
                                                     if let book = json["book"] as? String {
+                                                        self.bookURL = book
                                                         defaults.set(book, forKey: "book")
                                                     }
                                                     DispatchQueue.main.async {
