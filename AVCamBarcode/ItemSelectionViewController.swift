@@ -7,7 +7,7 @@ View controller for selecting items.
 
 import UIKit
 
-protocol ItemSelectionViewControllerDelegate: class {
+protocol ItemSelectionViewControllerDelegate: AnyObject {
 	func itemSelectionViewController<Item>(_ itemSelectionViewController: ItemSelectionViewController<Item>, didFinishSelectingItems selectedItems: [Item])
 }
 
