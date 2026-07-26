@@ -349,6 +349,7 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
     @IBOutlet weak var destinationLabel: UILabel!
     @IBOutlet weak var titleLabel: UILabel!
     @IBOutlet weak var errorLabel: UILabel!
+    @IBOutlet weak var torchButton: UIButton!
     
 	private let videoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .unspecified)
 	
@@ -377,6 +378,28 @@ class CameraViewController: UIViewController, AVCaptureMetadataOutputObjectsDele
             } else {
                 destinationLabel.text = "{Scan location}"
             }
+        }
+    }
+    
+    @IBAction func toggleTorch(_ sender: Any) {
+        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
+            errorLabel.text = "No torch available"
+            return
+        }
+
+        do {
+            try device.lockForConfiguration()
+            if device.torchMode == .on {
+                device.torchMode = .off
+                torchButton.setTitle("🔦", for: .normal)
+            } else {
+            // Turn on at default brightness
+            try device.setTorchModeOn(level: 1.0)
+                torchButton.setTitle("💡", for: .normal)
+            }
+            device.unlockForConfiguration()
+        } catch {
+            errorLabel.text = "Unable to configure torch: \(error.localizedDescription)"
         }
     }
     
